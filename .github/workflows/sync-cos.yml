@@ -43,7 +43,11 @@ jobs:
               Key="b26e80a8d9924ce79147ff3cac4d0765.json",
               Body=body,
               ContentType="application/json; charset=utf-8",
-              Headers={"x-cos-acl": "public-read"},
+            )
+          client.put_object_acl(
+              Bucket="9cfef94647d443a1-1254999378",
+              Key="b26e80a8d9924ce79147ff3cac4d0765.json",
+              ACL="public-read",
           )
-          print("synced", len(body), "bytes to COS")
+          print("synced", len(body), "bytes to COS, ACL public-read")
           PYEOF
