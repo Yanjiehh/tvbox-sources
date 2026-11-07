@@ -1,0 +1,49 @@
+# 作用：360.json 有新提交时，自动同步到腾讯云 COS（电视读取的那份）
+name: sync-360-to-cos
+
+on:
+  push:
+    paths:
+      - "360.json"
+  workflow_dispatch:
+  schedule:
+    - cron: "43 3 * * *"
+
+permissions:
+  contents: read
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Push 360.json to COS
+        env:
+          COS_SECRET_ID: ${{ secrets.COS_SECRET_ID }}
+          COS_SECRET_KEY: ${{ secrets.COS_SECRET_KEY }}
+        run: |
+          python -m pip install -q cos-python-sdk-v5
+          python - <<'PYEOF'
+          import os
+          from qcloud_cos import CosConfig, CosS3Client
+          cfg = CosConfig(
+              Region="ap-guangzhou",
+              SecretId=os.environ["COS_SECRET_ID"],
+              SecretKey=os.environ["COS_SECRET_KEY"],
+              Scheme="https",
+          )
+          client = CosS3Client(cfg)
+          with open("360.json", "rb") as f:
+              body = f.read()
+          client.put_object(
+              Bucket="9cfef94647d443a1-1254999378",
+              Key="b26e80a8d9924ce79147ff3cac4d0765.json",
+              Body=body,
+              ContentType="application/json; charset=utf-8",
+              Headers={"x-cos-acl": "public-read"},
+          )
+          print("synced", len(body), "bytes to COS")
+          PYEOF
