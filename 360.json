@@ -24,6 +24,22 @@
       "filterable": 1
     }
   ],
+  "lives": [
+    {
+      "name": "📺电视台┃移动专线",
+      "type": 1,
+      "url": "https://gh-proxy.com/https://raw.githubusercontent.com/Yanjiehh/tvbox-sources/main/live/tv-mobile.txt",
+      "playerType": 2,
+      "timeout": 15
+    },
+    {
+      "name": "📺电视台┃公网",
+      "type": 1,
+      "url": "https://gh-proxy.com/https://raw.githubusercontent.com/Yanjiehh/tvbox-sources/main/live/tv-cn.txt",
+      "playerType": 2,
+      "timeout": 15
+    }
+  ],
   "parses": [],
   "flags": []
 }
