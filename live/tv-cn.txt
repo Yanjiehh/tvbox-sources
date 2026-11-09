@@ -1,0 +1,14 @@
+央视频道,#genre#
+CCTV-1,https://p2.bdstatic.com/rtmp.liveshow.lss-user.baidubce.com/live/stream_bduid_6488563992_8982723413/merged_1707497046297_88536_25144_41936.m3u8
+CCTV-13,https://event.pull.hebtv.com/jishi/cp1.m3u8
+CCTV-14,https://event.pull.hebtv.com/jishi/cp2.m3u8
+卫视频道,#genre#
+浙江卫视,http://ali-xwl.cztv.com/live/channel01720Plxw.m3u8
+湖南卫视,https://txmov2.a.kwimgs.com/bs3/video-hls/5199687338554291078_hlsb.m3u8
+深圳卫视,http://yncbn.ks-cdn.gitv.tv/gitv_live/G_SHENZHEN-HQ/G_SHENZHEN-HQ.m3u8
+河北卫视,http://event.pull.hebtv.com/jishi/weishi_tingyun.m3u8
+黑龙江卫视,https://idclive.hljtv.com:4430/live/hljws_own.m3u8
+山东卫视,http://l.cztvcloud.com/channels/lantian/SXshengzhou1/720p.m3u8
+山东教育卫视,http://test1.live.sdetv.com.cn/live/dianshizhibo/playlist.m3u8
+延边卫视,https://srs.iyb983.cn:443/video/CYS/index.m3u8
+安多卫视,https://liveout.xntv.tv/a65jur/96iln2.m3u8
