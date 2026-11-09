@@ -49,6 +49,9 @@ jobs:
               SecretId=os.environ["COS_SECRET_ID"],
               SecretKey=os.environ["COS_SECRET_KEY"],
               Scheme="https",
+              Retry=5,
+              ConnectTimeout=60,
+              ReadTimeout=60,
           )
           client = CosS3Client(cfg)
 
