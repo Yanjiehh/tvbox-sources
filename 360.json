@@ -27,14 +27,14 @@
     {
       "name": "📺电视台┃移动专线",
       "type": 1,
-      "url": "https://gh-proxy.com/https://raw.githubusercontent.com/Yanjiehh/tvbox-sources/main/live/tv-mobile.txt",
+      "url": "https://9cfef94647d443a1-1254999378.cos.ap-guangzhou.myqcloud.com/c839e6c07ad85c6d00766113a86fabe7.txt",
       "playerType": 2,
       "timeout": 15
     },
     {
       "name": "📺电视台┃公网",
       "type": 1,
-      "url": "https://gh-proxy.com/https://raw.githubusercontent.com/Yanjiehh/tvbox-sources/main/live/tv-cn.txt",
+      "url": "https://9cfef94647d443a1-1254999378.cos.ap-guangzhou.myqcloud.com/8e520cb39261acea6d4b7a3d6f8f2141.txt",
       "playerType": 2,
       "timeout": 15
     }
