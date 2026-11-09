@@ -1,10 +1,13 @@
-# 作用：360.json 有新提交时，自动同步到腾讯云 COS（电视读取的那份）
+# 作用：把 360.json 和 live/ 直播清单同步到腾讯云 COS（电视读取的那份）
+# 约定：仓库里可继续用 raw.githubusercontent.com 地址引用 live/ 文件，
+#       本工作流上传前会把它们自动改写为 COS 地址（键名 = sha256(路径)[:32]+后缀，无特征）
 name: sync-360-to-cos
 
 on:
   push:
     paths:
       - "360.json"
+      - "live/**"
   workflow_dispatch:
   schedule:
     - cron: "0 20 * * *"        # UTC 20:00 = 北京时间 04:00
@@ -17,37 +20,71 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - name: Push 360.json to COS
+
+      - name: Sync config + live lists to COS
         env:
           COS_SECRET_ID: ${{ secrets.COS_SECRET_ID }}
           COS_SECRET_KEY: ${{ secrets.COS_SECRET_KEY }}
         run: |
           python -m pip install -q cos-python-sdk-v5
           python - <<'PYEOF'
-          import os
+          import os, glob, hashlib, re, json
           from qcloud_cos import CosConfig, CosS3Client
+
+          BUCKET = "9cfef94647d443a1-1254999378"
+          REGION = "ap-guangzhou"
+          BASE = "https://" + BUCKET + ".cos." + REGION + ".myqcloud.com"
+          CFG_KEY = "b26e80a8d9924ce79147ff3cac4d0765.json"
+
+          def cos_key(rel):
+              ext = os.path.splitext(rel)[1]
+              return hashlib.sha256(rel.encode("utf-8")).hexdigest()[:32] + ext
+
           cfg = CosConfig(
-              Region="ap-guangzhou",
+              Region=REGION,
               SecretId=os.environ["COS_SECRET_ID"],
               SecretKey=os.environ["COS_SECRET_KEY"],
               Scheme="https",
           )
           client = CosS3Client(cfg)
+
+          # 1) upload live lists to COS
+          for path in sorted(glob.glob("live/*.txt")):
+              with open(path, "rb") as f:
+                  body = f.read()
+              key = cos_key(path)
+              client.put_object(Bucket=BUCKET, Key=key, Body=body, ContentType="text/plain; charset=utf-8")
+              client.put_object_acl(Bucket=BUCKET, Key=key, ACL="public-read")
+              print("live synced:", path, "->", key)
+
+          # 2) rewrite raw github refs for live/ to COS urls
           with open("360.json", "rb") as f:
-              body = f.read()
-          client.put_object(
-              Bucket="9cfef94647d443a1-1254999378",
-              Key="b26e80a8d9924ce79147ff3cac4d0765.json",
-              Body=body,
-              ContentType="application/json; charset=utf-8",
-            )
-          client.put_object_acl(
-              Bucket="9cfef94647d443a1-1254999378",
-              Key="b26e80a8d9924ce79147ff3cac4d0765.json",
-              ACL="public-read",
+              cfg_text = f.read().decode("utf-8")
+
+          def repl(m):
+              rel = m.group(1)
+              if rel.startswith("live/"):
+                  return BASE + "/" + cos_key(rel)
+              return m.group(0)
+
+          cfg_text2 = re.sub(
+              r"https://raw\.githubusercontent\.com/Yanjiehh/tvbox-sources/main/([^\s\"'<>]+)",
+              repl,
+              cfg_text,
           )
-          print("synced", len(body), "bytes to COS, ACL public-read")
+          json.loads(cfg_text2)
+          leftover = [u for u in re.findall(r"https?://[^\s\"'<>]+", cfg_text2) if "githubusercontent" in u]
+          if leftover:
+              raise SystemExit("raw github refs remain: " + str(leftover))
+          print("config rewritten: live refs now point to COS")
+
+          # 3) upload rewritten config
+          data = cfg_text2.encode("utf-8")
+          client.put_object(Bucket=BUCKET, Key=CFG_KEY, Body=data, ContentType="application/json; charset=utf-8")
+          client.put_object_acl(Bucket=BUCKET, Key=CFG_KEY, ACL="public-read")
+          print("config synced", len(data), "bytes ->", CFG_KEY)
           PYEOF
