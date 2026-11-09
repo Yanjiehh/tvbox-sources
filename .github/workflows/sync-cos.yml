@@ -1,6 +1,7 @@
 # 作用：把 360.json 和 live/ 直播清单同步到腾讯云 COS（电视读取的那份）
-# 约定：仓库里可继续用 raw.githubusercontent.com 地址引用 live/ 文件，
+# 约定：仓库里可继续用 raw.githubusercontent.com / gh-proxy 地址引用 live/ 文件，
 #       本工作流上传前会把它们自动改写为 COS 地址（键名 = sha256(路径)[:32]+后缀，无特征）
+# 上传各步骤带独立重试（4次指数退避），抵御 Runner↔COS 的瞬时网络抖动
 name: sync-360-to-cos
 
 on:
@@ -32,7 +33,7 @@ jobs:
         run: |
           python -m pip install -q cos-python-sdk-v5
           python - <<'PYEOF'
-          import os, glob, hashlib, re, json
+          import os, glob, hashlib, re, json, time
           from qcloud_cos import CosConfig, CosS3Client
 
           BUCKET = "9cfef94647d443a1-1254999378"
@@ -49,22 +50,36 @@ jobs:
               SecretId=os.environ["COS_SECRET_ID"],
               SecretKey=os.environ["COS_SECRET_KEY"],
               Scheme="https",
-              Retry=5,
-              ConnectTimeout=60,
-              ReadTimeout=60,
           )
           client = CosS3Client(cfg)
 
-          # 1) upload live lists to COS
+          def retry(fn, name, attempts=4):
+              delay = 5
+              for i in range(attempts):
+                  try:
+                      fn()
+                      return
+                  except Exception as e:
+                      print(name, "attempt", i + 1, "failed:", str(e)[:200])
+                      if i == attempts - 1:
+                          raise
+                      time.sleep(delay)
+                      delay *= 2
+
+          # 1) upload live lists to COS (each retried independently)
           for path in sorted(glob.glob("live/*.txt")):
               with open(path, "rb") as f:
                   body = f.read()
               key = cos_key(path)
-              client.put_object(Bucket=BUCKET, Key=key, Body=body, ContentType="text/plain; charset=utf-8")
-              client.put_object_acl(Bucket=BUCKET, Key=key, ACL="public-read")
+
+              def do_live(b=body, k=key):
+                  client.put_object(Bucket=BUCKET, Key=k, Body=b, ContentType="text/plain; charset=utf-8")
+                  client.put_object_acl(Bucket=BUCKET, Key=k, ACL="public-read")
+
+              retry(do_live, "live " + path)
               print("live synced:", path, "->", key)
 
-          # 2) rewrite raw github refs for live/ to COS urls
+          # 2) rewrite raw github refs for live/ to COS urls (whole URL incl proxy prefix)
           with open("360.json", "rb") as f:
               cfg_text = f.read().decode("utf-8")
 
@@ -74,7 +89,6 @@ jobs:
                   return BASE + "/" + cos_key(rel)
               return m.group(0)
 
-          # match the WHOLE url token (incl. any proxy prefix like gh-proxy.com/https://)
           cfg_text2 = re.sub(
               r"https://[^\s\"'<>]*raw\.githubusercontent\.com/Yanjiehh/tvbox-sources/main/(live/[^\s\"'<>]+)",
               repl,
@@ -88,9 +102,13 @@ jobs:
               raise SystemExit("mangled proxy-wrapped cos url detected")
           print("config rewritten: live refs now point to COS")
 
-          # 3) upload rewritten config
+          # 3) upload rewritten config (retried)
           data = cfg_text2.encode("utf-8")
-          client.put_object(Bucket=BUCKET, Key=CFG_KEY, Body=data, ContentType="application/json; charset=utf-8")
-          client.put_object_acl(Bucket=BUCKET, Key=CFG_KEY, ACL="public-read")
+
+          def do_cfg():
+              client.put_object(Bucket=BUCKET, Key=CFG_KEY, Body=data, ContentType="application/json; charset=utf-8")
+              client.put_object_acl(Bucket=BUCKET, Key=CFG_KEY, ACL="public-read")
+
+          retry(do_cfg, "config")
           print("config synced", len(data), "bytes ->", CFG_KEY)
           PYEOF
