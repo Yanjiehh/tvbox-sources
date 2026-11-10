@@ -37,6 +37,13 @@
       "url": "https://9cfef94647d443a1-1254999378.cos.ap-guangzhou.myqcloud.com/8e520cb39261acea6d4b7a3d6f8f2141.txt",
       "playerType": 2,
       "timeout": 15
+    },
+    {
+      "name": "📺电视台┃zbds自动",
+      "type": 1,
+      "url": "https://live.zbds.top/tv/iptv4.txt",
+      "playerType": 2,
+      "timeout": 15
     }
   ],
   "parses": [],
